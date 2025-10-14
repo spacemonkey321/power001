@@ -1,0 +1,53 @@
+# Namen und Fach-Glossar – Sales Coach Assistant
+
+## Personen & Rollen
+
+**Behrus (IT/cove.mesh)** – Technischer Projektleiter / Architekt; entwirft und bewertet Lösungsvarianten, erstellt technisches Grobkonzept, steuert IT-Ressourcen, keine PM- oder Data-Engineering-Aufgaben.
+
+**Christoph** – Gesamtprojektleiter & Business-Lead; Use-Case-Definition, PM, Schnittstelle zwischen Business & IT, Steuerung, Statusberichte.
+
+**Peter Lüdtke (Schunck DLP)** – Verantwortlich für Datenplattform, Erstellung SQL-View)
+
+**Philipp Sous** (Just Experts) – Vertreter von Peter Lüdtke; erstellt/prüft Views und Datenanbindungen.
+
+**Hendrik Lehmann / Dirk (Ecclesia)** – Administratoren der Power Platform/CRM-Tenant; Ansprechpartner für Berechtigungen & Zugänge.
+
+**Richard / Don** – Management / Lenkungskreis-Mitglieder; Empfänger der Statusberichte und Entscheidungsvorlagen.
+
+**Florian A. / Daniel H.** – Key Account Manager (Pilotnutzer, liefern Fragenmatrix).
+
+---
+
+## Unternehmen & Partner
+
+**Schunck – Organisation, deren Daten (Kunde, Vertrag etc.) als Basis für den Prototyp dienen.**
+
+**Ecclesia** – Ziel-Tenant / Unternehmensgruppe, in die mittelfristig migriert wird (2026).
+
+**cover.mesh** – Technischer Partner/Hoster; stellt temporäre Testumgebung bereit 
+
+**Just Experts** – Externe Daten-Spezialisten (arbeiten an der Schunck-Datenplattform).
+
+---
+
+## Fach- & Projektbegriffe
+
+**Technisches Grobkonzept (3 Varianten)** – Dokument von Behrus mit drei Lösungswegen: (1) CoverMesh, (2) CRM/Ecclesia, (3) Schunk (nicht empfohlen); dient als Entscheidungsgrundlage.
+
+**KAM-Fragenmatrix** – Tabellenstruktur, die Business-Fragen den Datenquellen und Feldern zuordnet (Frage → Antwort → Feld → Logik).
+
+**SQL-Views** – Vorgefertigte Datenansichten aus der Consumer-Schicht, mit sprechenden Spaltennamen und konsistenter Logik.
+
+**Consumer-Schicht** – Datenebene im Data Warehouse, in der Daten bereits aufbereitet und für Berichte oder KI zugänglich sind.
+
+**Staging / Integration / Consumer** – Schichtenfolge im Data Warehouse: Rohdaten → bereinigt → nutzerfertig.
+
+**Scope-Creep** – Risiko der stillen Umfangserweiterung über den definierten MVP hinaus.
+
+**Slice / MVP (Minimum Viable Product)** – Kleinster, funktionsfähiger Prototyp, der echten Nutzen zeigt (hier: Chatbot mit Kunde & Vertrag).
+
+**Lego-Kiste** – Metapher für die Copilot-Umgebung: flexibel kombinierbare technische Bausteine für schnelle Prototypen.
+
+**Tenant** – Separater, abgeschlossener Microsoft-Cloudbereich (Schunck-Tenant, Ecclesia-Tenant, cove.mesh-Tenant).
+
+**Copilot Studio / Power Platform** – Microsoft-Werkzeuge für die Erstellung von Chatbots, Workflows und Low-Code-Automationen.

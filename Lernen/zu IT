@@ -1,0 +1,164 @@
+got it — du willst den **Manager-Lernplan**: genau so viel Wissen, dass du zielsicher steuern, bewerten und entscheiden kannst, ohne selbst Queries zu bauen. Hier ist dein komprimiertes „Was muss ich können / was delegiere ich“-Leitfaden, plus was aus dem vorherigen Lehrplan übrig bleibt und was neu dazukommt.
+
+# Was du als Führungskraft effizienterweise KÖNNEN solltest
+
+**1) Zielbild & Scope**
+
+* Klarer **Problem-→Outcome-Frame**: Welche 3–5 KAM-Fragen beantworten wir zuerst? Welche Business-KPIs ändern sich dadurch (Zeit-zu-Antwort, Abschlussrate, Upsell, NPS)?
+* **Scope-Grenzen**: Was macht der Copilot *nicht* (z. B. keine Preislogik ändern, kein Freitext-Writeback ohne SP).
+
+**2) Architektur auf einer Seite verstehen (nur grob)**
+
+* Datenfluss: **DLP (Azure SQL) → Consumer-Layer-Views → LLM/Copilot (read-only)**, optional **Writebacks via Stored Procedures**.
+* Sicherheitslinien: **Entra-Rollen, RLS, Private Link**, Logging von Prompts/SQL.
+
+**3) Qualitäts- & Risikohebel**
+
+* **Guardrails**: Jeder Prompt erzwingt *Kunde + Zeitraum*, Top-N/LIMIT, Timeout, Anti-Cartesian-Join.
+* **Datenqualität**: Welche *automatisierten Checks* laufen täglich? Was passiert bei Fail (Fail-closed vs. Warnung)?
+* **Bias/Fehlerkultur**: „LLM kann halluzinieren“ → Fakten werden **aus SQL belegt** und protokolliert.
+
+**4) Entscheidungs-Checklisten**
+
+* **Go/No-Go** je Sprint: Akzeptanzkriterien (Accuracy ≥ X%, Antwortzeit ≤ Y s, Abdeckung Use Cases ≥ Z%).
+* **Security/Data**: PII-Liste, RLS-Matrix, Audit-Nachweis vorhanden?
+* **Kosten/Leistung**: vCore/DTU-Auslastung, Kosten je 1000 Queries, Rate-Limit-Plan.
+
+**5) Governance & Change**
+
+* **RACI** (wer entscheidet was), **CI/CD-Prinzipien** (Vier-Augen-Review), **Rollback-Pfade** (PITR).
+* **Datendomänen-Owner** benannt; Glossar fachlich abgenommen.
+* **Adoption**: Trainingsformat, Champions, Feedback-Loop im Tool.
+
+**6) Erfolg messen**
+
+* **Product KPIs**: Time-to-Answer, First-Contact-Resolution (FCR) für Datenfragen, KAM-Nutzungsrate/MAU.
+* **Business KPIs**: Zeitersparnis je KAM/Woche, identifizierte Cross-Sell-Opportunitäten, Report-Anfragen↓.
+
+**7) Kommunikation**
+
+* 15-Min **Steering-Ritual** (wöchentlich): Risiken, KPIs, Blocker, Entscheidungen.
+* **Demo-Always**: Jede Iteration zeigt echte KAM-Fragen → Antwort + Nachweis (SQL-Snippet/Quelle).
+
+---
+
+# Was du NICHT können musst (delegieren)
+
+* SQL/Index-Tuning, Query Store-Analysen, Partitionierung.
+* ADF-Pipelines bauen, Consumer-Layer-Views modellieren und kommentieren.
+* Prompt-Engineering auf Token-Ebene, Guardrail-Implementierung.
+* Entra/Key Vault/Private Link-Konfiguration.
+* Telemetrie-Pipelines, Kosten-/Leistungs-Dashboards implementieren.
+
+---
+
+# Was aus dem letzten Lehrplan für dich **übrig bleibt** (Manager-Version)
+
+(Alles andere ist Team-Detailarbeit.)
+
+* **A1 Domänen- & Datenlandkarte**: *Lesen/abnehmen* (du brauchst Überblick, nicht die Erstellung).
+* **A2 Datenmodellierung high-level**: Verstehen, was Fakt/Dimension/Measure bedeutet und warum „sprechende Views“ wichtig sind.
+* **B4 Consumer-Layer-Design**: Du prüfst *Namenskonventionen, Dokumentationstiefe, Verantwortliche*.
+* **B5 Performance-Prinzipien**: Nur die **Ziele** kennen (Antwort ≤ X s, Base-Line/Alarm).
+* **B6 Sicherheit high-level**: Prinzipien **Least Privilege, RLS, Writebacks nur via SP**.
+* **B7 Guardrails high-level**: Welche Regeln existieren + wie werden sie erzwungen.
+* **B8 Datenqualität**: Welche Checks, welche Eskalation.
+* **C10 Monitoring**: Welche **3–5 Betriebsmetriken** sieht dein Dashboard.
+* **C11 Compliance**: DSGVO-Basics (PII-Liste, Zweckbindung, Aufbewahrung).
+* **C12 Change-Management**: Release-Rhythmus, PR-Gate, Rollback-Plan.
+* **D13 Multi-Agent (nur Konzept)**: Wozu Spezialisierung dient (SQL-Generator, Validator, Formatter).
+* **D14 PBI-Semantik**: „Single Source of Truth“ zwischen SQL und Power BI.
+
+---
+
+# Was für deine Rolle **NEU dazukommt**
+
+**Strategie & Organisation**
+
+* **Priorisierungsmatrix**: Impact × Machbarkeit × Datenreife → Reihenfolge der Use Cases.
+* **Budget-Leitplanken**: Cap/Alert je Monat; Szenario-Kosten (Baseline, Peak, Wachstum).
+* **Sourcing-Entscheidungen**: Interne Kapazität vs. Partner (klarer Deliverables-Vertrag).
+
+**Recht & Risiko**
+
+* **Data-Processing-Risiken**: Klarheit, ob LLM-Provider Daten speichert; Tenant-Grenzen.
+* **Model-Risk-Management**: Änderung am Prompt/Schema = „Model Change“ → Dokumentation.
+
+**Adoption & Change**
+
+* **KAM-Journey**: Von Frage → Antwort → Nachweis → Follow-up-Aktion (CRM/PBI).
+* **Enablement-Plan**: 60-Min-Onboarding, 5-Min-„How-to-ask“, In-Tool-Tooltips.
+
+**Operating Model**
+
+* **Runbook**: On-Call-Plan, Priorities (P1 Datenleck, P2 Genauigkeit < Ziel, P3 Performance).
+* **Decision Log**: Jede Architektur-/Policy-Entscheidung in 1-Satz-Form, warum/wann.
+
+---
+
+# Deine **Manager-Cheatsheets**
+
+## 1) Weekly Steering-Agenda (15 Min)
+
+* KPIs: MAU, Antwortzeit p95, Accuracy-Stichprobe, DQ-Fehler, Kosten/1k Antworten.
+* Risiken/Blocker & Mitigations.
+* Entscheidungen benötigt (max. 3).
+* Live-Demo einer neuen Frage.
+
+## 2) Go/No-Go-Check vor Pilot
+
+* RLS-Matrix & PII-Liste freigegeben ✅
+* DQ-Checks > 95% grün, Fail-closed definiert ✅
+* Antwortzeit p95 ≤ 5 s, Accuracy-Sample ≥ 90% ✅
+* Kosten-Cap + Rate-Limit aktiv ✅
+* Rollback-Plan/PITR getestet ✅
+
+## 3) Artefakte, die du einforderst
+
+* **One-Pager Architektur** (Aktuell/Target).
+* **Rollen-/Rechtematrix** (wer sieht was).
+* **Glossar** (Top-20 Begriffe ↔ Spalten/Measures).
+* **Guardrails-Liste** (erzwingbare Regeln).
+* **Runbook + On-Call**.
+* **Kostendashboard**-Screenshot.
+
+## 4) Red-Flags (sofort nachfragen)
+
+* „Wir können ohne Zeitraum/Kunden antworten.“
+* „Writebacks gehen direkt aus dem Chat ohne SP.“
+* „Wir loggen Prompts/SQL nicht.“
+* „Kein DQ-Beweis, nur ‚fühlt sich richtig an‘.“
+* „Kein Rollback-Pfad.“
+
+---
+
+# Kurzfristiger Umsetzungsplan (für dich)
+
+**Woche 1**
+
+* Ziele/KPIs finalisieren, Use-Case-Priorisierung abnicken.
+* Artefakt-Liste einfordern (One-Pager, Glossar-Draft, RLS-Draft).
+* Governance festlegen (RACI, PR-Gate, Demo-Ritual).
+
+**Woche 2**
+
+* Guardrails & DQ-Plan abnehmen.
+* Kosten-Leitplanken setzen, Alerts aktiv.
+* Pilot-Use-Cases: Abnahmekriterien definieren.
+
+**Woche 3–4**
+
+* Pilot-Demo mit echten KAM-Fragen.
+* Go/No-Go gegen Checkliste.
+* Adoption-Toolkit (Cheatsheet, 5-Min-Guide) freigeben.
+
+---
+
+## TL;DR
+
+* **Wissen, nicht bauen**: Du brauchst **Architektur-Prinzipien, Guardrails, KPIs, Risiko-/Kosten-Hebel** – nicht die technische Umsetzung.
+* **Stark delegieren**: Modellierung, SQL, Security-Setup, Telemetrie sind Teamaufgaben.
+* **Streng steuern**: Klare Akzeptanzkriterien, kurze Steering-Routinen, Demo-Pflicht, Artefakte.
+* **Erfolg = Adoption × Qualität × Kostenkontrolle** – darauf konzentrierst du dich.
+
+Wenn du willst, packe ich das in eine **1-seitige Steering-Folie** oder eine **Checkliste zum Ausdrucken**.

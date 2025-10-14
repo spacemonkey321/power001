@@ -1,0 +1,30 @@
+# Statusbericht Sales Coach Assistant – 02.10.2025
+
+## 1. Projektstand und Vorgehen
+
+Wir bauen Prototypen mit Copilot Studio, binden erste Datenquellen (Kunde & Vertrag) an und testen sie mit Key Accountern. Fokus: textbasierter Chatbot als MVP-Feature 1; Voice folgt später. Erste Tests laufen mit ca. fünf Pilot-Usern. Aufgabensteuerung erfolgt über Teams-Planner, Koordination zwischen IT (Behrus) und Business (Christoph).
+
+## 2. Erledigt
+
+* Technisches Grobkonzept erstellen
+* Start Use Cases mit KAMs abstimmen
+* Datenfokus mit KAMs abstimmen
+
+## 3. Laufend
+
+* Vorbereitung der Entscheidung am 06.10.25 auf Basis des Technischen Grobkonzepts
+* Mapping Start Use Cases auf Datenpunkte
+
+## 4. Backlog
+
+* Projektdefinition und Planung auf Basis des Technischen Grobkonzepts und der Entscheidung - startend nach Entscheidung am 06.10.25
+* Termin zu Datenmodell koordinieren mit Schunck-IT
+* Datenaufbereitung Vertragsdaten und Kundendaten anstoßen mit Schunck-IT
+
+## 5. Risiken
+
+* Projektrisiken ergeben sich aus der Wahl des Lösungswegs und finden Eingang in die Projektdefinition
+
+## 6. Entscheidungsbedarfe
+
+* Wahl des Lösungswegs im KI-Abstimmungstermin am 06.10.25

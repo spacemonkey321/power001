@@ -1,0 +1,123 @@
+Super – hier ist ein **kompakter Lernpfad (Szenario 2 – Schunck-Tenant)**, der alles Datenbezogene abdeckt, was du fürs Projekt brauchst – plus das wichtigste generelle Wissen. Wir gehen **schrittweise** vor: Fundament → Umsetzung → Betrieb/Governance → Advanced.
+
+# Überblick der Lernmodule
+
+## Phase A – Fundament (Schnellstart)
+
+1. **Domänen- & Datenlandkarte (DLP)**
+
+* Ziel: Überblick über Quellen, DLP-Tabellen, Consumer-Layer, Aktualisierungszyklen.
+* Fokus S2: Welche Tabellen/Views speisen KAM-Fragen (Schäden, Prämien, Kunden, Verträge)?
+* Deliverable: Datenlandkarte + Glossar (Fachbegriffe ↔ Felder).
+
+2. **Datenmodellierung für Abfragen durch LLM**
+
+* Ziel: Star-Schema/Conformed Dimensions, klare Measures (z. B. Schadenquote).
+* Fokus S2: „Durchkommentierter Consumer-Layer“ (Views mit sprechenden Namen, Kommentare).
+* Deliverable: Entwurf Dimensionen/Fakten + Namens-/Kommentier-Konventionen.
+
+3. **SQL-Grundlagen (projektorientiert)**
+
+* Ziel: Joins, Aggregation, Window Functions, Common Pitfalls (NULL, Duplikate).
+* Fokus S2: Schreibweise, die LLM gut „versteht“ (konsistente Aliase, eindeutige Spalten).
+* Deliverable: Beispielqueries für Kern-Use-Cases (Kunde, Zeitraum, Kennzahl).
+
+## Phase B – Umsetzung (Szenario-2-spezifisch)
+
+4. **Consumer-Layer-Design & Dokumentation**
+
+* Ziel: Lesbare, stabile Views pro Use-Case; Versionierung (SQL-Projekt).
+* Fokus S2: „Kunden-gefilterte“ Views für Performance & Einfachheit.
+* Deliverable: 5–10 kuratierte Views + MD-Datenkatalog.
+
+5. **Performance für LLM-generierte SQL**
+
+* Ziel: Indexing (Rowstore/Clustered/Non-Clustered), Partitioning, Indexed Views; Parameterisierung.
+* Fokus S2: Query Store, Automatic Tuning, Read-Scale-Optionen, Baselines & SLA für Antwortzeiten.
+* Deliverable: Tuning-Plan + Metrik-Dashboard (Zeit/CPU/Reads).
+
+6. **Sichere Anbindung Copilot/LLM → Azure SQL**
+
+* Ziel: Architektur „Read-Only by default“; Writes nur via whitelisted Stored Procedures.
+* Fokus S2: Entra ID/Managed Identity, Least Privilege, Private Link/Firewall, Key Vault.
+* Deliverable: Rollen-/Rechtematrix + Verbindungsdiagramm.
+
+7. **Prompt-→-SQL Guardrails**
+
+* Ziel: Wie „übersetzen“ wir Geschäftssprache robust in SQL?
+* Fokus S2: System-Prompts, Schema-Hints, Synonym-Listen, Query-Validierung, Zeit-/Kundenfilter erzwingen.
+* Deliverable: Guardrail-Regeln + Tests (z. B. anti-Cartesian-Join, Limit/Top-N, Timeout).
+
+8. **Datenqualität & Tests**
+
+* Ziel: DQ-Checks (Vollständigkeit, Plausibilität, Referenzintegrität) in ETL und SQL-Views.
+* Fokus S2: Automatisierte Checks in ADF/SQL, Notfall-Schalter bei DQ-Verletzung.
+* Deliverable: DQ-Checkliste + täglicher DQ-Report.
+
+9. **Write-Back-Szenarien (optional)**
+
+* Ziel: Sichere Änderungen (Feedback, Tags, Notizen) ohne Risiko für DLP.
+* Fokus S2: Nur Stored Procedures mit Validierung/Transaktionen, Audit-Trail.
+* Deliverable: 1–2 geprüfte Write-Actions + Rollback-Plan.
+
+## Phase C – Betrieb & Governance
+
+10. **Monitoring & Observability**
+
+* Ziel: Protokolliere LLM-Prompts, generierte SQL, Laufzeiten, Fehler; Telemetrie korrelieren.
+* Fokus S2: Heatmap „Top-Queries“, Cost Guard, Rate-Limits/Drosselung.
+* Deliverable: Betriebs-Dashboard + Alarmregeln.
+
+11. **Sicherheit, Datenschutz, Compliance**
+
+* Ziel: RLS/CLS, Dynamic Data Masking, Always Encrypted (wo nötig), Audit.
+* Fokus S2: DSGVO (Zweckbindung, Minimierung), PII-Handhabung im Chat, Log-Retention.
+* Deliverable: Datenschutzkonzept + RLS-Matrix (KAM-Sicht auf Kunden).
+
+12. **CI/CD & Change-Management**
+
+* Ziel: SQL-Projekt (dacpac), ADF-Pipelines, Infra as Code, PR-Reviews, Canary-Rollouts.
+* Fokus S2: „Kein Sandbox nötig“ → sichere Deploy-Patterns (Datenbankkopie/PITR für Tests).
+* Deliverable: Pipeline-Definition + Migrations-Runbook.
+
+## Phase D – Advanced (wenn Zeit/Bedarf)
+
+13. **Multi-Agent-Muster**
+
+* Ziel: Spezialisierte Agenten (SQL-Generator, Fakten-Validator, Antwort-Formatter).
+* Fokus S2: Agent-Hand-Off & Toolformer-Pattern für komplexe KAM-Fragen.
+* Deliverable: Sequenzdiagramm + Minimal-PoC.
+
+14. **Semantikebene & PBI-Synergien**
+
+* Ziel: Nutzung bestehender Power-BI-Semantik (Business-Glossar, Synonyme).
+* Fokus S2: Konsistente Kennzahlen zwischen SQL-Antworten & PBI-Apps („Single Source of Truth“).
+* Deliverable: Mapping-Tabelle SQL-Measure ↔ PBI-Measure.
+
+15. **Kostentransparenz & Kapazitätsplanung**
+
+* Ziel: vCore/DTU-Sizing, Workload-Trennung, Zeitfenster für schwere Queries.
+* Fokus S2: „LLM-Spitzen“ abfedern, Budget-Alerts, Cap auf gleichzeitige Sessions.
+* Deliverable: Kapazitäts-Plan + Kosten-Leitplanken.
+
+---
+
+## Cheatsheet – Kernentscheidungen in Szenario 2
+
+* **Datenzugriff:** LLM **Read-Only** auf Consumer-Views; Writes nur via geprüfte SPs.
+* **Schema-Design:** Star-Schema + kommentierte Views + stabile Spaltennamen.
+* **Guardrails:** Erzwinge **Kunde + Zeitraum** in jedem Query; LIMIT/Timeout; Anti-Pattern-Checks.
+* **Security:** Entra-Rollen, RLS, Private Link, Audit; PII nur wenn absolut nötig.
+* **Performance:** Index-Plan + Query Store Baselines + Auto-Tuning an + regelmäßige Reviews.
+* **Qualität:** DQ-Checks in ETL *und* Query-Schicht; sichtbare DQ-Badges im Chat.
+* **Betrieb:** Telemetrie für Prompts/SQL/Latenz; Alarmierung; Kosten-Monitor.
+* **Änderungen:** PR-basiert, versioniert, mit Rollback-Pfade (PITR/DB-Copy).
+
+---
+
+## Sofortiger Start (erste 2 Wochen)
+
+* **Woche 1:** Module 1–3 (Landkarte, Modell, SQL-Kern) → Glossar + 5 Beispielqueries.
+* **Woche 2:** Module 4–6 (Consumer-Layer, Performance, sichere Anbindung) → 3 kuratierte Views + Rollenmatrix + Basis-Monitoring.
+
+Wenn du magst, lege ich direkt mit **Modul 1 (Datenlandkarte + Glossar)** los und skizziere die Felder/Views, die wir für *Schadenquote, Prämienverlauf, Cross-Selling* brauchen.

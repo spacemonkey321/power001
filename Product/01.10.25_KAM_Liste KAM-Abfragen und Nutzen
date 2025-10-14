@@ -1,0 +1,113 @@
+Super — danke für die Feldliste! Ich fasse das jetzt **praxisnah** zusammen: Was ist „einfach“ vs. „komplex“ – und wie setzen wir das **konkret** mit euren Feldern (Kunden & Verträge) um. Am Ende checke ich kritisch, ob das logisch sauber ist und wo noch Lücken sind.
+
+# Wesen
+
+* **EINFACH** = 1 Objekt (Kunde/Vertrag) → 1–2 Felder ablesen → direkt antworten.
+* **KOMPLEX** = über mehrere Objekte/Verträge/Beziehungen laufen, Treffer konsolidieren, ggf. **Zwischenergebnis + Rückfrage**.
+
+---
+
+# Einfache Abfragen (mit Feld-Mapping)
+
+1. **„Wer ist zuständig?“ (Ansprechpartner je Vertrag)**
+
+   * **Eingabe**: Vertragsnr. oder Kunde+Sparte
+   * **Felder** (Vertrag): `LU_KBPERS` (Kundenbetreuer), `LU_KAPERS` (Key Accounter), `LU_FAEX` (Fachexperte), `LU_FABE` (Fachberater) aus `dim_vertraege_aktuell`. Optional: Kunden-Mail aus `dim_kunden.LU_EMAIL`.
+   * **Output**: Namen + (falls gepflegt) E-Mail(s) **kommagetrennt** (Copy-Paste in Outlook).
+
+2. **„Rechnung per E-Mail aktiv? Wohin?“**
+
+   * **Eingabe**: Vertrag(e) oder Kunde
+   * **Felder** (Vertrag): `LU_RKZ` (Rechnungskennzeichen), `LU_RechnungsArt`, Zielmail für Rechnungsdruck `LU_EMAIL4`. Kunden-E-Mail: `dim_kunden.LU_EMAIL`.
+   * **Output**: Ja/Nein + Liste der Zieladressen.
+
+3. **„Zahlart/Zahlweise/Inkasso?“**
+
+   * **Felder** (Vertrag): `LU_ZAA` (Zahlungsart), `LU_ZAW` (Zahlweise), `LU_INK` (Inkassoart).
+
+4. **„Wie hoch ist die Prämie?“ / „Brutto/Netto/Steuer?“**
+
+   * **Felder** (Vertrag): `LU_BJB` (Bruttoprämie p.a.), `LU_NJB` (Nettoprämie p.a.), `LU_VSTBetrag` / `LU_VST` (%).
+
+5. **„Laufzeit / 1- oder 3-Jahresvertrag?“**
+
+   * **Felder** (Vertrag): `LU_BEG` (Beginn), `LU_ABL` (Ende), `LU_LFZ` (Laufzeit), `LU_KUENDFR` / `LU_VERLFR`.
+
+6. **„Mach mir eine schnelle Vertragsübersicht“ (Tabelle)**
+
+   * **Felder** (Vertrag): `LU_VSN` (Vertragsnr.), `Sparte`, `LU_GES` (Gesellschaft), `LU_BEG`, `LU_ABL`, `LU_ZAW`, `LU_ZAA`, `LU_BJB`/`LU_NJB`.
+
+---
+
+# Komplexe Abfragen (mit Logik-Skizze & Feld-Mapping)
+
+1. **Konzernsuche: „Wo liegt die Betriebshaftpflicht/KFZ im Konzern X?“**
+
+   * **Logik**:
+
+     1. **Kundenkandidaten** des Konzerns ermitteln (über konsistente Konzern-Relation; falls nicht vorhanden → Such-/Filterstrategie + Zwischenergebnis).
+     2. Verträge der Kandidaten durchsuchen → `Sparte`/`LU_USP` matchen, `LU_VSN`, `LU_GES`, `LU_BEG/ABL` zurückgeben.
+   * **Felder**: Kunden-Ident (`dim_kunden.LU_KDR`, Name `LU_NAM`), auf Vertragsseite `Sparte`, `LU_VSN`, `LU_GES`.
+   * **Zwischenergebnis**: „Gefunden bei A/B/C – welche meinst du?“
+
+2. **Massen-Kommunikation „Adressänderung“: alle Zuständigen für alle aktiven Verträge**
+
+   * **Logik**:
+
+     1. Alle **aktiven** Verträge eines Kunden selektieren (`LU_STA`/`LU_DST` prüfen).
+     2. Ansprechpartner-Felder einsammeln (`LU_KBPERS`, `LU_FAEX`, `LU_FABE`) + deduplizieren.
+     3. E-Mail-Ausgabe kommagetrennt.
+
+3. **Mitversicherte & Standorte (Sach) als **eine** Tabelle**
+
+   * **Logik**: Vertragsstammdaten + zugehörige Mitversicherten-/Standort-Infos **aggregieren** (in BIAS über mehrere Reiter).
+   * **Felder** (Startpunkte sichtbar): `dim_vertraege_aktuell.LU_MITVKDR` (Kunden-Nr. Mitversicherte) als Join-Hinweis; Sach-Risikodaten selbst liegen typischerweise in sparten-/maskenspezifischen Tabellen/Reitern. Ergebnisliste mit: Unternehmen, Standort, Summe, Gefahren.
+
+4. **„Key Facts“ eines Unternehmens (Kontext-Summary)**
+
+   * **Logik**:
+
+     1. Kundenmaske lesen: `dim_kunden.LU_UMSATZ`, `LU_ANZGMA`/`LU_ANZKMA`, `LU_BRA`.
+     2. Falls leer → in relevanten Verträgen (z. B. Betriebshaftpflicht) nach gepflegten Risikofeldern schauen (Fallback).
+
+5. **Portfolio-Filter: „Zeig mir alle Verträge mit Lastschrift / ohne E-Rechnung“**
+
+   * **Felder**: `LU_ZAA`/`LU_ZAW`/`LU_INK` (Zahlung), `LU_RKZ`/`LU_RechnungsArt` (Rechnung).
+   * **Output**: Liste mit `LU_VSN`, `Sparte`, `LU_GES`, `LU_BEG/ABL`.
+
+6. **„Wo ist Kunde X mitversichert?“**
+
+   * **Logik**: alle Verträge durchsuchen, in denen `LU_MITVKDR` = Kunde X → Trefferliste (Vertrag, Sparte, Versicherer).
+
+---
+
+# Kritischer Reality-Check
+
+**✓ Daten liegen vor** für: Ansprechpartner, Zahlart/Zahlweise/Inkasso, Laufzeit, Prämien, Rechnungskennzeichen/-art, Rechnungsdruck-E-Mail, Mitversicherten-Relation. → **Die „einfachen“ und ein Großteil der „komplexen“ Use Cases sind technisch direkt adressierbar.**
+
+**⚠️ Abhängigkeiten / Lücken:**
+
+* **Konzernrelation:** Feldliste zeigt keine eindeutige HQ/Parent-ID. Für Konzernsuche braucht es ein Mapping oder Suchstrategie + Zwischenauswahl.
+* **Sach-Risikodaten (Standorte/Gefahren/Summen):** liegen in sparten-/maskenspezifischen Tabellen; aktuell nur teilweise sichtbar. Für Vollabdeckung braucht es diese Felder.
+* **E-Rechnung aktiv:** muss definiert werden, welche Feldkombination „E-Rechnung aktiv“ bedeutet (z. B. RKZ + Rechnungsart + Ziel-E-Mail).
+* **E-Mails der Ansprechpartner:** aktuell nur Namen gepflegt; für Massen-Mail braucht es E-Mail-Mapping (User-Stamm/AD).
+* **„Aktive Verträge“:** Statuslogik über STA/ABL/Storno-Felder sauber definieren.
+
+---
+
+# Konsolidierte Empfehlung (jetzt umsetzen → als nächstes)
+
+**Jetzt (Quick Wins):**
+
+* Ansprechpartner je Vertrag (KBPERS/KAPERS/FAEX/FABE) → E-Mail-Ausgabe.
+* Rechnungsversand + Zieladressen (RKZ/RechnungsArt + EMAIL4).
+* Zahlart/Zahlweise/Inkasso (ZAA/ZAW/INK).
+* Prämie/Laufzeit (BJB/NJB/VST + BEG/ABL/LFZ).
+* Schnelle Vertragsübersicht (VSN, Sparte, GES, BEG/ABL, ZAW/ZAA, BJB/NJB).
+
+**Als nächstes (High Impact):**
+
+* Konzernsuche (mit Zwischenauswahl).
+* Massen-Mail an Zuständige (aktive Verträge → KBPERS/KAPERS/FAEX/FABE → dedupliziert).
+* Mitversicherte/Standorte/Summen (Teilstart über LU_MITVKDR; Vollversion nach Feld-Nachlieferung).
+* Key-Facts-Aggregator (Kunde → Fallback Vertrag).

@@ -1,0 +1,225 @@
+# Implementierungsvorlage – KAM-Abfragen auf Kunden- & Vertragsdaten
+
+Ziel dieses Dokuments ist es, einen schlanken Abfrage-Dienst (bzw. Chat-Flow oder API) zu beschreiben, der typische Fragen von Key Account Managern direkt aus Kunden- und Vertragsdaten beantwortet. Die KAMs sparen Klickwege im Bestandssystem, erhalten konsistente Ausgaben und können sowohl für den täglichen Betrieb als auch für Besprechungen schneller arbeiten. Das Dokument richtet sich an IT (Daten/Backend), Produkt/PO und die KAM-Fachseite.
+
+## 0) Kurzüberblick über Anfragen
+
+Wir wollen häufige Fragen zu Kunden und Verträgen so beantworten, dass sie ohne Systemwechsel und ohne manuelle Suche gelöst werden. Kurz gesagt: Daten holen, verlässlich aufbereiten, sofort nutzbar machen.
+
+* Kurzfristige, schnell umsetzbare Effekte (Quick Wins) sind die Abfragen zu Ansprechpartnern, Rechnungsversand, Zahlweise, Prämien/Laufzeiten sowie eine kompakte Vertragsübersicht.
+* Mittelfristig besonders wirksam (High Impact) sind Konzern-Durchsuchungen (z. B. „wo liegt die Betriebshaftpflicht?“), Massen-Mailings an alle Zuständigen, konsolidierte Tabellen zu Mitversicherten/Standorten sowie ein „Key-Facts“-Abruf je Unternehmen.
+
+Diese Funktionen reduzieren die Bearbeitungszeit von Sekunden bis hin zu ganzen Minuten, verhindern Kontextwechsel und entlasten Innen- wie Außendienst.
+
+---
+
+## 1) Einordnung: Einfache vs. komplexe Abfragen – und warum das wichtig ist
+
+Einfache Abfragen lesen gezielt ein oder zwei Felder aus einem klar adressierten Objekt (z. B. einem Vertrag) und liefern sofort eine Antwort. Typisch ist hier die Frage „Ist Merkmal X gesetzt, und wenn ja, mit welchem Wert?“. Der Implementierungsaufwand ist gering, die Antwort ist schnell, die Datenherkunft eindeutig.
+
+Komplexe Abfragen verbinden Informationen aus mehreren Objekten oder Ebenen. Die Daten liegen verteilt – etwa auf Kunden-, Vertrags-, Konzern- oder Mitversichertenebene – und müssen durch Beziehungen verknüpft werden. Das System durchläuft diese Verbindungen, konsolidiert die Ergebnisse und fragt bei Bedarf nach, wenn es mehrere sinnvolle Treffer gibt. Das ist anspruchsvoller, schafft aber den größeren Zeitgewinn, weil heute genau diese Fälle viele gleichartige Klickpfade erfordern.
+
+Für beide Kategorien gelten gemeinsame Prinzipien:
+
+* Ein deterministischer Kern (SQL/Views) stellt sicher, dass Antworten reproduzierbar und prüfbar sind. Eine LLM-Schicht dient ausschließlich dem Sprach-Parsing und der formatierten Ausgabe.
+* Bei Mehrtreffern werden Zwischenergebnisse erzeugt, sodass KAMs schnell eingrenzen können.
+* Fallback-Kaskaden sorgen dafür, dass teilweise ungepflegte Felder nicht zu stillen Fehlschlägen führen. Fehlende Werte werden erkennbar gemacht („unbekannt“), statt die Abfrage unauffällig zu entwerten.
+
+---
+
+## 2) Zwei exemplarische Use Cases für den Start
+
+Im Folgenden beschreiben wir einen einfachen und einen komplexen Use Case vollständig, jeweils mit Geschäftsbezug, Eingaben, Feldern, SQL-Skizze, Ausgabebeispiel, Akzeptanzkriterien sowie Definition of Ready/Done. Weitere Use Cases lassen sich anschließend nach demselben Muster ergänzen.
+
+### 2.1 Einfacher Use Case: „Wer ist zuständig?“ (Ansprechpartner je Vertrag)
+
+**Geschäftliche Einordnung.** Im täglichen Betrieb ruft ein Kunde mit einer Vertragsfrage an. Der KAM muss wissen, wer intern fachlich zuständig ist, etwa Fachexperte oder Innendienst. Heute bedeutet das: Kunde suchen, Vertrag öffnen, nach unten scrollen, Name und E-Mail kopieren. Das passiert mehrfach am Tag und kostet pro Vorgang typischerweise 30–45 Sekunden. Ziel ist eine direkte Abfrage, die Name und E-Mail aller relevanten Rollen sofort liefert.
+
+**Eingabe (Beispiele).** „Wer ist für Vertrag {Vertragsnummer} zuständig?“ „Wer ist für Kunde {Name} in Sparte {Sparte} zuständig?“
+
+**Erwarteter Output.** Eine kurze, klare Liste der Rollen mit Namen und – falls vorhanden – E-Mail-Adressen. Als Zusatz bieten wir eine Kopierzeile mit allen deduplizierten E-Mails in kommagetrennter Form an, damit sie unmittelbar in Outlook verwendbar ist. Die Minimalrollen sind: Kundenbetreuer (KBPERS), Key-Accounter (KAPERS), Fachexperte (FAEX), Fachberater (FABE).
+
+**Benötigte Datenquellen und Felder.**
+
+* `dim_vertraege_aktuell`: `LU_VSN` (Vertragsnummer), `LU_KBPERS`, `LU_KAPERS`, `LU_FAEX`, `LU_FABE`, `LU_BEG`, `LU_ABL`, `Sparte`, `LU_GES`, `LU_STA`/`LU_DST` (Status).
+* Optional ein Mapping „Person → E-Mail“ (z. B. Active Directory/HR-Stamm), damit wir E-Mails zu Rollennamen auflösen können.
+* Optional `dim_kunden`: `LU_KDR` (Kundennummer), `LU_NAM`, `LU_EMAIL` (Kunden-E-Mail; diese ist nicht die interne Ansprechpartner-E-Mail).
+
+**SQL-Skizze (vereinfacht).**
+
+```sql
+-- Variante: Lookup per Vertragsnummer
+SELECT v.LU_VSN,
+       v.LU_KBPERS, v.LU_KAPERS, v.LU_FAEX, v.LU_FABE
+FROM dim_vertraege_aktuell v
+WHERE v.LU_VSN = :vsn
+  AND (v.LU_STA = 'aktiv'
+       OR CURRENT_DATE BETWEEN v.LU_BEG AND COALESCE(v.LU_ABL, DATE '9999-12-31'));
+```
+
+Für die Variante „Kunde + Sparte“ wird die Kundenselektion ergänzt, z. B. über `dim_kunden`, und anschließend der passende Vertrag gefiltert (Sparte, ggf. Best-Match-Logik).
+
+**Beispielhafte Antwort.**
+
+```
+Zuständig für Vertrag 4711:
+- Fachexperte:    Max Muster <max.muster@firma.de>
+- Fachberater:    (unbekannt)
+- Key Accounter:  Julia König <j.koenig@firma.de>
+- Kundenbetreuer: Paul Kern <paul.kern@firma.de>
+
+Kopierzeile (Mail): max.muster@firma.de, j.koenig@firma.de, paul.kern@firma.de
+```
+
+**Akzeptanzkriterien.**
+
+1. Eine Abfrage über Vertragsnummer liefert innerhalb von etwa einer Sekunde die vier Rollen, fehlende Werte sind als „unbekannt“ markiert.
+2. E-Mail-Adressen werden dedupliziert und in einer kommagetrennten Kopierzeile ausgegeben.
+3. Nur aktive Verträge werden berücksichtigt; die Statuslogik ist eindeutig definiert.
+4. Fehlerfälle, etwa eine unbekannte Vertragsnummer, erzeugen eine klare Meldung mit einem praktikablen nächsten Schritt (z. B. „Bitte Kunde + Sparte versuchen“).
+
+**Definition of Ready (DoR).** Die zugrunde liegenden Tabellen/Views sind erreichbar, die Bedeutung der Felder ist bestätigt. Entweder steht ein E-Mail-Mapping für Personen bereit oder es wird für den MVP ausdrücklich „Name-only“ vereinbart.
+
+**Definition of Done (DoD).** Unit-Query-Tests mit fünf realen Verträgen laufen fehlerfrei. Drei Stichproben werden von KAMs geprüft und abgenommen. Der Antworttext inklusive Kopierzeile entspricht exakt dem vereinbarten Format.
+
+---
+
+### 2.2 Komplexer Use Case: „Wo liegt die Betriebshaftpflicht im Konzern X?“
+
+**Geschäftliche Einordnung.** Großkunden besitzen häufig zahlreiche Tochtergesellschaften mit unterschiedlichen Namen. Bestimmte Verträge – etwa die Betriebshaftpflicht (BHV) – liegen nicht zwingend beim Headquarter, sondern oft bei einer Tochter. Heute klickt sich ein KAM durch viele Einheiten; das kostet Zeit und ist fehleranfällig. Ziel ist eine Abfrage, die **alle relevanten Konzerneinheiten** identifiziert, **deren Verträge nach BHV filtert** und **aktive Treffer** konsolidiert ausgibt – inklusive optionaler Eingrenzung bei vielen Ergebnissen.
+
+**Eingabe (Beispiel).** „Wo im Konzern {Konzernname} liegt die Betriebshaftpflicht?“
+
+**Erwarteter Output.** Eine tabellarische Trefferliste mit Einheit/Kunde, Vertragsnummer, Sparte/Untersparte, Versicherer sowie Beginn und Ende. Bei einer größeren Anzahl von Treffern gibt das System ein Zwischenergebnis aus und bittet um eine sinnvolle Eingrenzung, etwa nach Standort oder Gesellschaft.
+
+#### Datenbasis (nur Vertrags- und Kundendaten aus der PDF-Feldliste)
+
+* ``Kunde: `LU_KDR` (Kundennummer), `LU_NAM` (Name), `LU_SUCHNAM` (Suchname), `` (Gruppe Versicherer – **fachliche Bedeutung zu klären**, s. Annahmen).
+* **Vertrag**: `LU_KDR` (Kundennr.), `LU_VSN` (Vertragsnummer), `Sparte`, `LU_SPAKZ` (Sparten-KZ), `LU_USP` (Untersparte), `LU_GES` (Gesellschaft), `LU_BEG`/`LU_ABL` (Beginn/Ende), `LU_STA` (Status), `LU_DST` (Aufhebungsdatum – steuert Aktivität).
+* **Optional für Heuristik**: `LU_MITVKDR` (Kunden-Nr. Mitversicherte), um verbundene Einheiten zu erkennen.
+
+> **Wichtig:** Es gibt **keine** Tabelle/Felder wie `dim_konzern_map` oder `parent_name` in der PDF; ebenso kein generisches „Produktcode“-Feld – dafür stehen `Sparte`, `LU_SPAKZ`, `LU_USP` zur Verfügung.
+
+#### Variante A (empfohlen): Konzernauflösung über `LU_GRPNR`
+
+**Annahmen (fachlich noch zu prüfen):**
+
+1. `dim_kunden.LU_GRPNR` wird als **Kundenkonzern-ID** gepflegt, d. h. **alle** Konzerneinheiten tragen **denselben Wert**; es handelt sich **nicht** um eine Versicherer-Gruppenkennzeichnung.
+2. Die Pflege von `LU_GRPNR` ist **konsistent** über alle betroffenen Kundensätze.
+
+Diese Annahmen sind **Voraussetzung** für die deterministische Umsetzung und müssen von der Fachseite bestätigt werden.
+
+**Logik.**
+
+1. Konzern über `LU_NAM`/`LU_SUCHNAM` identifizieren → zugehörige `LU_GRPNR` ermitteln.
+2. **Alle Kunden** mit gleicher `LU_GRPNR` selektieren (Konzernkandidaten).
+3. Verträge dieser Kunden nach **BHV** filtern: via `Sparte = 'Betriebshaftpflicht'` **oder** z. B. `LU_SPAKZ = 'BHV'`/passender `LU_USP`.
+4. **Aktive** Verträge listen (Status/Datum): `LU_STA` und/oder `LU_DST` (kein Aufhebungsdatum im relevanten Zeitraum).
+5. Ausgabe: Einheit (`LU_NAM`), `LU_VSN`, `Sparte`/`LU_SPAKZ`/`LU_USP`, `LU_GES`, `LU_BEG`–`LU_ABL`.
+
+**SQL-Skizze (nur PDF-Felder).**
+
+```sql
+WITH konzern AS (
+  SELECT LU_GRPNR
+  FROM dim_kunden
+  WHERE LU_NAM ILIKE :konzern OR LU_SUCHNAM ILIKE :konzern
+  LIMIT 1
+),
+Einheiten AS (
+  SELECT k.LU_KDR, k.LU_NAM
+  FROM dim_kunden k
+  JOIN konzern z ON z.LU_GRPNR = k.LU_GRPNR
+)
+SELECT e.LU_NAM AS einheit,
+       v.LU_VSN, v.Sparte, v.LU_SPAKZ, v.LU_USP,
+       v.LU_GES, v.LU_BEG, v.LU_ABL
+FROM dim_vertraege_aktuell v
+JOIN Einheiten e ON e.LU_KDR = v.LU_KDR
+WHERE (v.Sparte = 'Betriebshaftpflicht' OR v.LU_SPAKZ = 'BHV')
+  AND (v.LU_STA = 'aktiv' OR v.LU_DST IS NULL)
+ORDER BY e.LU_NAM, v.LU_BEG DESC;
+```
+
+**Hinweise.**
+
+* Feinklassifikation über `LU_SPAKZ`/`LU_USP` möglich, um BHV sicher zu treffen.
+* Aktiv-Logik verbindet `LU_STA`/`LU_DST` (fachlich zu harmonisieren).
+
+**Fazit A.** Bei bestätigter Annahme zu `LU_GRPNR` ist die Lösung **deterministisch, performant und wartbar**.
+
+#### Variante B (Fallback): Heuristik ohne Konzern-ID
+
+Falls `LU_GRPNR` **nicht** als Kundenkonzern-Schlüssel gepflegt ist, nutzen wir eine **Heuristik**:
+
+1. **Namensnormalisierung**: Kandidaten über `LU_NAM`/`LU_SUCHNAM`.
+2. **Relationen**: verbundene Einheiten via `LU_MITVKDR` hinzunehmen (falls gepflegt).
+3. **BHV-Filter** und **Aktiv-Logik** wie in Variante A (Sparte/`LU_SPAKZ`/`LU_USP`, `LU_STA`/`LU_DST`).
+
+**Fazit B.** Funktional, aber **nicht 100 % verlässlich** (Namensambiguitäten, unvollständige Pflege der Mitversicherten). **Nur als Übergang** geeignet.
+
+#### Akzeptanzkriterien (überarbeitet)
+
+1. **Antwortzeit** bei ≤ 50 Einheiten ~2 s; Sortierung nach Einheit und absteigendem Vertragsbeginn.
+2. **Variante A:** Ergebnisse sind vollständig/korrekt gegenüber manuellem Suchlauf (3 Stichproben).
+3. **Mehrtreffer** erzeugen ein **Zwischenergebnis** mit klaren Eingrenzungsvorschlägen.
+4. **Leere Felder** sind sichtbar („unbekannt“); keine stillen Fehlschläge.
+5. **Feldkonformität:** Nur Felder aus `dim_kunden` und `dim_vertraege_aktuell` werden verwendet (keine fiktiven Tabellen/Felder).
+
+#### Definition of Ready (DoR)
+
+* **Fachliche Bestätigung offen:** `LU_GRPNR` bedeutet **Kundenkonzern-ID** (einheitlich je Konzern). Ohne diese Bestätigung startet **Variante B**.
+* Spartenbezeichnung/Kennungen für BHV (Werte in `Sparte` / `LU_SPAKZ` / ggf. `LU_USP`) sind festgelegt.
+* Statuslogik „aktiv“ (Kombination aus `LU_STA`/`LU_DST`) ist abgestimmt.
+
+#### Definition of Done (DoD)
+
+* **Ende-zu-Ende-Demo**: Prompt → Kandidaten (falls nötig) → Trefferliste → Eingrenzung (bei Bedarf).
+* **Abgleich** mit manuellem Report/Screens für repräsentative Konzerne positiv.
+* **Unit-Tests** für BHV-Filter (Sparte/`LU_SPAKZ`/`LU_USP`) und Aktiv-Logik bestehen.
+
+> **Hinweis zu Annahmen (Variante A).** Die Umsetzung setzt voraus, dass `LU_GRPNR` **fachlich** als **Kundenkonzern-Schlüssel** verstanden und über **alle Konzerneinheiten konsistent gepflegt** ist. Diese Annahme ist **noch zu prüfen**; ohne Bestätigung fällt die Implementierung auf **Variante B (Heuristik)** zurück.
+
+---
+
+## 3) Technische Leitplanken, die wir vorab sauber definieren sollten
+
+* **Statuslogik für „aktive Verträge“.** Es braucht eine eindeutige Regel, wann ein Vertrag als aktiv gilt. Diese Regel verbindet den Status (`LU_STA`), das Beginn/Ende-Datum (`LU_BEG`/`LU_ABL`) und relevante Storno-/Abbruch-Felder (`LU_DST`, `LU_STONL`). So vermeiden wir interpretierbare Grauzonen.
+* **Erkennung „E-Rechnung aktiv“.** Wir legen eine verständliche, von allen Seiten akzeptierte Regel fest, die das Zusammenwirken von `LU_RKZ`, `LU_RechnungsArt` und der Zieladresse `LU_EMAIL4` beschreibt.
+* **Personen-E-Mails.** Damit Ansprechpartner-Listen wirklich nutzbar sind, sollte es eine verbindliche Zuordnung „Person → E-Mail“ geben (z. B. via AD/HR-Stamm). Andernfalls liefern wir im MVP nur Namen; das ist nutzbar, aber weniger effizient.
+* **Namenssuche und Normalisierung.** Für Konzern- und Kundennamen hat sich eine Normalisierung bewährt (Umlaute, Rechtsformen, Aliase). So reduzieren wir verpasste Treffer.
+* **Performance.** Wir setzen Indizes auf die wichtigsten Join- und Filterfelder (`LU_VSN`, `LU_KDR`, `Sparte`, `LU_BEG`/`LU_ABL`), um kurze Antwortzeiten zu sichern.
+* **Auditing.** Jede Abfrage sollte mit einer Query-ID, Zeitstempel, Filtern und Ergebnisgröße geloggt werden. Das hilft bei Produktsteuerung, Fehleranalyse und Reproduzierbarkeit.
+* **Fehlerhandhabung.** Fehlermeldungen sind kurz, klar und mit einem direkten nächsten Schritt versehen (z. B. „Bitte Vertragsnummer prüfen“ oder „Einschränkung über Standort angeben“).
+
+---
+
+## 4) Test und Validierung: Zusammenarbeit von Business und IT
+
+Für jeden Use Case wird eine kleine Matrix gepflegt. Sie enthält die echte Frage, die zugehörigen Datenquellen, eine SQL-Skizze, das gewünschte Antwortformat, präzise Akzeptanzkriterien, definierte Testdaten und einen verantwortlichen Owner.
+
+* Die Validierungsfälle sind realistische KAM-Prompts mit erwarteten Antworten („Golden Samples“).
+* Die Abnahme erfolgt durch einen Abgleich mit einem manuellen Report bzw. mit Screens aus den Quellsystemen.
+* Auf diese Weise sprechen Business und IT die gleiche Sprache, und jede Antwort ist objektiv prüfbar.
+
+---
+
+## 5) Roadmap-Vorschlag für die ersten Sprints
+
+* **Sprint 1 (ca. zwei bis drei Wochen):** Umsetzung des einfachen Use Cases „Ansprechpartner je Vertrag“ und des komplexen Use Cases „Konzernsuche Betriebshaftpflicht“. Dieses Dokument dient als direkte Implementierungsgrundlage.
+* **Sprint 2:** Abfragen zu Rechnungsversand und Zieladressen, Zahlweise/Zahlart/Inkasso, Prämien/Laufzeit sowie die schnelle Vertragsübersicht.
+* **Sprint 3:** Massen-Mail an alle Zuständigen, konsolidierte Tabelle zu Mitversicherten/Standorten (Teilstart; vollständige Abdeckung sobald alle Felder vorliegen) sowie ein Key-Facts-Aggregator pro Unternehmen.
+
+---
+
+## 6) Sinnvolle Erweiterungen, die die Nutzung im Alltag weiter verbessern
+
+* **Standard-Antworttemplates.** Wiederverwendbare Tabellenlayouts und Kopierzeilen erhöhen die Konsistenz und senken den Formatierungsaufwand.
+* **Zwischen-Dialoge als UI-Komponenten.** Eindeutige, tastaturbedienbare Auswahl-Dialoge verbessern die Eingrenzung bei Mehrtreffern.
+* **Exportfunktionen.** CSV/XLSX/PDF-Exporte im Firmenlayout erleichtern die Mitnahme in Kundentermine.
+* **Feingranulare Berechtigungen.** Rollen- und Konzernscope werden konsequent umgesetzt („Least Privilege“).
+* **Monitoring.** Wir beobachten die Top-Fragen, Antwortzeiten und Fehlerraten und steuern damit Produktprioritäten.
+
+---
+
+##
